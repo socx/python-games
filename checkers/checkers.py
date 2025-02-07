@@ -1,18 +1,22 @@
 # --- SOCX CHECKERS ----------- #
 # --- By Musterion for Socx --- #
-# --- Version 2.1.0 ----------- #
+# --- Version 2.1.1 ----------- #
 # --- 08 Feb 2025 --------------#
 
 import pygame
 import sys
-import copy
 import math
 import random
 
 # ---------------- Pygame Initialization and Global Constants ----------------
 pygame.init()
 
+# Board dimensions
 WIDTH, HEIGHT = 800, 800
+# Extra space at the bottom for info display
+INFO_PANEL_HEIGHT = 100
+WINDOW_HEIGHT = HEIGHT + INFO_PANEL_HEIGHT
+
 ROWS, COLS = 8, 8
 SQUARE_SIZE = WIDTH // COLS
 
@@ -100,7 +104,7 @@ class Board:
         # Move piece on board and update its position
         self.board[piece.row][piece.col], self.board[row][col] = 0, piece
         piece.move(row, col)
-        # King promotion
+        # King promotion if piece reaches the last row
         if row == ROWS - 1 or row == 0:
             if not piece.king:
                 piece.make_king()
@@ -249,9 +253,12 @@ class Game:
         self.turn = RED
         self.valid_moves = {}
 
-    def update(self):
+    def update(self, elapsed_time):
+        # Draw the board (top portion)
         self.board.draw(self.win)
         self.draw_valid_moves(self.valid_moves)
+        # Draw the information panel (bottom portion)
+        self.draw_info(elapsed_time)
         pygame.display.update()
 
     def reset(self):
@@ -282,7 +289,6 @@ class Game:
             if (row, col) in self.valid_moves:
                 self._move(row, col)
                 return True
-            # Otherwise, do nothing.
             return False
 
         # If nothing is selected, select the clicked piece (if it belongs to the player)
@@ -320,6 +326,29 @@ class Game:
                 15
             )
 
+    def draw_info(self, elapsed_time):
+        # Draw the information panel in the bottom INFO_PANEL_HEIGHT area.
+        font = pygame.font.SysFont("comicsans", 24)
+        # Next to play
+        next_text = f"Next to Play: {'RED' if self.turn == RED else 'WHITE'}"
+        next_surface = font.render(next_text, True, WHITE)
+        # Pieces left
+        pieces_text = f"RED: {self.board.red_left}    WHITE: {self.board.white_left}"
+        pieces_surface = font.render(pieces_text, True, WHITE)
+        # Timer in MM:ss format
+        minutes = elapsed_time // 60000
+        seconds = (elapsed_time // 1000) % 60
+        timer_text = f"Time: {minutes:02d}:{seconds:02d}"
+        timer_surface = font.render(timer_text, True, WHITE)
+        
+        # Y coordinate for the info panel (start drawing 10 pixels below the board)
+        panel_y = HEIGHT + 10
+        self.win.blit(next_surface, (10, panel_y))
+        pieces_x = WIDTH // 2 - pieces_surface.get_width() // 2
+        self.win.blit(pieces_surface, (pieces_x, panel_y))
+        timer_x = WIDTH - timer_surface.get_width() - 10
+        self.win.blit(timer_surface, (timer_x, panel_y))
+
     def change_turn(self):
         self.valid_moves = {}
         self.selected = None
@@ -345,12 +374,10 @@ def get_all_moves(board, color, game):
             temp_board = board.clone()
             temp_piece = temp_board.get_piece(piece.row, piece.col)
             new_board = simulate_move(temp_piece, move, temp_board, skip)
-            # Record: (original piece row, col, destination, skip list, new board state)
             moves.append((piece.row, piece.col, move, skip, new_board))
     return moves
 
 def minimax(board, depth, max_player, game, alpha, beta):
-    # Terminal condition: maximum depth reached or game over.
     if depth == 0 or board.winner() is not None:
         return evaluate(board), board
 
@@ -380,7 +407,7 @@ def minimax(board, depth, max_player, game, alpha, beta):
         return min_eval, best_move
 
 def ai_move(game):
-    # Let the minimax algorithm decide the best move for WHITE (computer)
+    # Use minimax to decide the best move for WHITE (computer)
     _, move = minimax(game.board.clone(), 3, True, game, float('-inf'), float('inf'))
     if move is not None:
         r, c, dest, skip, _ = move
@@ -425,14 +452,16 @@ def menu():
 # ---------------- Main Game Loop ----------------
 def main():
     mode = menu()  # Show menu and let the user select a mode
-    win = pygame.display.set_mode((WIDTH, HEIGHT))
+    win = pygame.display.set_mode((WIDTH, WINDOW_HEIGHT))
     pygame.display.set_caption("Checkers")
     game = Game(win, mode)
     clock = pygame.time.Clock()
+    start_time = pygame.time.get_ticks()  # Record start time for timer
 
     run = True
     while run:
         clock.tick(60)  # 60 FPS
+        elapsed_time = pygame.time.get_ticks() - start_time
 
         # Check for a winner
         if game.board.winner() is not None:
@@ -451,16 +480,16 @@ def main():
                 run = False
                 pygame.quit()
                 sys.exit()
-
-            # In two-player mode or when it's the human's turn, handle mouse input.
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if game.mode == "2P" or (game.mode == "AI" and game.turn == RED):
                     pos = pygame.mouse.get_pos()
-                    row = pos[1] // SQUARE_SIZE
-                    col = pos[0] // SQUARE_SIZE
-                    game.select(row, col)
+                    # Only consider clicks on the board area (ignore clicks in info panel)
+                    if pos[1] < HEIGHT:
+                        row = pos[1] // SQUARE_SIZE
+                        col = pos[0] // SQUARE_SIZE
+                        game.select(row, col)
 
-        game.update()
+        game.update(elapsed_time)
 
     pygame.quit()
 

@@ -1,3 +1,8 @@
+## Version 2.1.1
+ - minor UI improvements
+ - show the player whose turn it is
+ - display time elapsed
+ - display number of pieces remianing for each player
 ## Version 2.1.0
   - user can change their mind about the piece they want to move by clicking on another one (if not forced to continue a multi‐jump sequence).
   - there is a menu letting the user choose between two‐player mode and single‐player (computer AI opponent) mode.
