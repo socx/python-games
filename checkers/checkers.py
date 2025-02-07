@@ -1,7 +1,7 @@
 # --- SOCX CHECKERS ----------- #
 # --- By Musterion for Socx --- #
-# --- Version 2.0.0 ----------- #
-# --- 07 Feb 2025 --------------#
+# --- Version 2.1.0 ----------- #
+# --- 08 Feb 2025 --------------#
 
 import pygame
 import sys
@@ -258,17 +258,37 @@ class Game:
         self._init()
 
     def select(self, row, col):
-        # In multi-jump sequences, the selected piece is fixed.
+        """
+        Modified selection method: if a piece is already selected, the player
+        may change their selection by clicking on another piece of theirs (if not forced
+        to continue a multi-jump sequence). Otherwise, if the clicked square is a valid move,
+        then execute the move.
+        """
+        clicked_piece = self.board.get_piece(row, col)
+
+        # If a piece is already selected...
         if self.selected:
+            # Allow changing selection if the clicked square contains another piece belonging to the player
+            # and if the current selected piece is not forced into a multi-jump capture.
+            if clicked_piece != 0 and clicked_piece.color == self.turn and clicked_piece != self.selected:
+                forced_moves = {move: skipped for move, skipped in self.board.get_valid_moves(self.selected).items() if skipped}
+                if not forced_moves:
+                    self.selected = clicked_piece
+                    moves = self.board.get_valid_moves(clicked_piece)
+                    capture_moves = {move: skipped for move, skipped in moves.items() if skipped}
+                    self.valid_moves = capture_moves if capture_moves else moves
+                    return True
+            # If the clicked square is one of the valid moves for the selected piece, move there.
             if (row, col) in self.valid_moves:
                 self._move(row, col)
-            return True
+                return True
+            # Otherwise, do nothing.
+            return False
 
-        piece = self.board.get_piece(row, col)
-        if piece != 0 and piece.color == self.turn:
-            self.selected = piece
-            moves = self.board.get_valid_moves(piece)
-            # If capturing moves exist, force them.
+        # If nothing is selected, select the clicked piece (if it belongs to the player)
+        if clicked_piece != 0 and clicked_piece.color == self.turn:
+            self.selected = clicked_piece
+            moves = self.board.get_valid_moves(clicked_piece)
             capture_moves = {move: skipped for move, skipped in moves.items() if skipped}
             self.valid_moves = capture_moves if capture_moves else moves
             return True
@@ -281,7 +301,7 @@ class Game:
             self.board.move(self.selected, row, col)
             if captured:
                 self.board.remove(captured)
-                # After capturing, check if additional capture moves exist.
+                # After capturing, check if additional capture moves exist (multi-jump)
                 new_moves = self.board.get_valid_moves(self.selected)
                 capture_moves = {move: skipped for move, skipped in new_moves.items() if skipped}
                 if capture_moves:
