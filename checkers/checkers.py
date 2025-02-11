@@ -1,12 +1,10 @@
 # --- SOCX CHECKERS ----------- #
 # --- By Musterion for Socx --- #
-# --- Version 2.1.2 ----------- #
+# --- Version 2.2.0 ----------- #
 # --- 08 Feb 2025 --------------#
 
 import pygame
 import sys
-import math
-import random
 
 # ---------------- Pygame Initialization and Global Constants ----------------
 pygame.init()
@@ -259,24 +257,30 @@ class Game:
         self.draw_valid_moves(self.valid_moves)
         # Draw the information panel (bottom portion)
         self.draw_info(elapsed_time)
+        # If a winner exists, overlay a winner message across the board
+        if self.board.winner() is not None:
+            winner_color = self.board.winner()
+            winner_text = f"Winner: {'RED' if winner_color == RED else 'WHITE'}"
+            winner_font = pygame.font.SysFont("comicsans", 72)
+            winner_surface = winner_font.render(winner_text, True, WHITE)
+            win_x = WIDTH // 2 - winner_surface.get_width() // 2
+            win_y = HEIGHT // 2 - winner_surface.get_height() // 2
+            self.win.blit(winner_surface, (win_x, win_y))
         pygame.display.update()
 
     def reset(self):
         self._init()
 
     def select(self, row, col):
-        """
-        Modified selection method: if a piece is already selected, the player
-        may change their selection by clicking on another piece of theirs (if not forced
-        to continue a multi-jump sequence). Otherwise, if the clicked square is a valid move,
-        then execute the move.
-        """
+        # Do not allow moves if a winner has been determined.
+        if self.board.winner() is not None:
+            return False
+
         clicked_piece = self.board.get_piece(row, col)
 
         # If a piece is already selected...
         if self.selected:
-            # Allow changing selection if the clicked square contains another piece belonging to the player
-            # and if the current selected piece is not forced into a multi-jump capture.
+            # Allow changing selection if clicking another piece of the same color (and not forced to multi-jump).
             if clicked_piece != 0 and clicked_piece.color == self.turn and clicked_piece != self.selected:
                 forced_moves = {move: skipped for move, skipped in self.board.get_valid_moves(self.selected).items() if skipped}
                 if not forced_moves:
@@ -285,7 +289,7 @@ class Game:
                     capture_moves = {move: skipped for move, skipped in moves.items() if skipped}
                     self.valid_moves = capture_moves if capture_moves else moves
                     return True
-            # If the clicked square is one of the valid moves for the selected piece, move there.
+            # If the clicked square is a valid move for the selected piece, execute the move.
             if (row, col) in self.valid_moves:
                 self._move(row, col)
                 return True
@@ -422,9 +426,9 @@ def ai_move(game):
 def menu():
     win = pygame.display.set_mode((WIDTH, HEIGHT))
     pygame.display.set_caption("Checkers Menu")
-    run = True
+    running = True
     mode = None
-    while run:
+    while running:
         win.fill(BLACK)
         title_font = pygame.font.SysFont("comicsans", 60)
         option_font = pygame.font.SysFont("comicsans", 40)
@@ -437,16 +441,16 @@ def menu():
         pygame.display.update()
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                run = False
+                running = False
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
                     mode = "AI"
-                    run = False
+                    running = False
                 elif event.key == pygame.K_2:
                     mode = "2P"
-                    run = False
+                    running = False
     return mode
 
 # ---------------- Main Game Loop ----------------
@@ -458,26 +462,20 @@ def main():
     clock = pygame.time.Clock()
     start_time = pygame.time.get_ticks()  # Record start time for timer
 
-    run = True
-    while run:
+    running = True
+    while running:
         clock.tick(60)  # 60 FPS
         elapsed_time = pygame.time.get_ticks() - start_time
 
-        # Check for a winner
-        if game.board.winner() is not None:
-            winner_color = game.board.winner()
-            print(f"Game Over! {'RED' if winner_color == RED else 'WHITE'} wins!")
-            run = False
-
-        # In single-player mode, if it's the computer's turn, let the AI move.
-        if game.mode == "AI" and game.turn == WHITE:
-            # Small delay to make the AI move visible
-            pygame.time.delay(500)
+        # Do not exit when a winner is determined; simply display the winner on-screen.
+        # In single-player mode, let the AI move when it's WHITE's turn.
+        if game.mode == "AI" and game.turn == WHITE and game.board.winner() is None:
+            pygame.time.delay(500)  # Small delay to make the AI move visible
             ai_move(game)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                run = False
+                running = False
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
@@ -489,7 +487,8 @@ def main():
                         col = pos[0] // SQUARE_SIZE
                         game.select(row, col)
 
-        game.update(elapsed_time)
+        if game.board.winner() is None:
+            game.update(elapsed_time)
 
     pygame.quit()
 

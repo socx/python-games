@@ -1,3 +1,5 @@
+## Version 2.2.0
+ - display winner across the screen
 ## Version 2.1.1
  - minor UI improvements
  - show the player whose turn it is
