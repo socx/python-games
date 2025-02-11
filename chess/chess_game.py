@@ -1,6 +1,6 @@
 # --- SOCX CHESS -------------- #
 # --- By Musterion for Socx --- #
-# --- Version 1.1.0 ----------- #
+# --- Version 1.2.0 ----------- #
 # --- 11 Feb 2025 --------------#
 
 import sys
@@ -12,7 +12,7 @@ import chess
 pygame.init()
 WIDTH, HEIGHT = 640, 640  # window dimensions (square board)
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Python Chess - Drag and Drop")
+pygame.display.set_caption("Socx Chess (WIP)")
 CLOCK = pygame.time.Clock()
 
 # Each square will be WIDTH//8 pixels wide/high.
@@ -53,6 +53,7 @@ LIGHT_COLOR = (238, 238, 210)
 DARK_COLOR = (118, 150, 86)
 HIGHLIGHT_COLOR = (50, 50, 200)  # can be used to highlight a square (if desired)
 GAME_OVER_COLOR = (200, 0, 0)      # color for game over message
+HINT_COLOR = (255, 255, 0)         # yellow color for legal move hints
 
 # --- Helper Functions ---
 
@@ -77,6 +78,22 @@ def draw_board(screen, square_size):
             color = LIGHT_COLOR if (row + col) % 2 == 0 else DARK_COLOR
             rect = pygame.Rect(col * square_size, row * square_size, square_size, square_size)
             pygame.draw.rect(screen, color, rect)
+
+def draw_move_hints(screen, board, square_size, dragging_info):
+    """
+    If a piece is currently being dragged (i.e. selected),
+    display small yellow circles on each square that is a legal destination.
+    """
+    if dragging_info is not None:
+        from_square = dragging_info["from_square"]
+        # Filter legal moves for the piece being dragged.
+        legal_moves = [move for move in board.legal_moves if move.from_square == from_square]
+        for move in legal_moves:
+            to_square = move.to_square
+            rect = get_square_rect(to_square, square_size)
+            center = rect.center
+            # Draw a small circle as a move hint.
+            pygame.draw.circle(screen, HINT_COLOR, center, square_size // 8)
 
 def draw_pieces(screen, board, square_size, dragging_info):
     """
@@ -103,7 +120,6 @@ def draw_pieces(screen, board, square_size, dragging_info):
     if dragging_info is not None:
         symbol = piece_unicode[dragging_info["piece"].symbol()]
         text_surface = FONT.render(symbol, True, (0, 0, 0))
-        # Calculate top-left position for the dragged piece.
         pos = dragging_info["current_pos"]
         offset = dragging_info["offset"]
         draw_x = pos[0] - offset[0]
@@ -118,7 +134,7 @@ def draw_game_over(screen, board, square_size):
         outcome = board.outcome()
         result_text = f"Game Over: {outcome.result()}" if outcome is not None else "Game Over"
         text_surface = FONT.render(result_text, True, GAME_OVER_COLOR)
-        text_rect = text_surface.get_rect(center=(WIDTH//2, HEIGHT//2))
+        text_rect = text_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text_surface, text_rect)
 
 def square_from_mouse_pos(pos, square_size):
@@ -183,6 +199,7 @@ while running:
     # --- Drawing ---
     SCREEN.fill((0, 0, 0))
     draw_board(SCREEN, SQUARE_SIZE)
+    draw_move_hints(SCREEN, board, SQUARE_SIZE, dragging_info)
     draw_pieces(SCREEN, board, SQUARE_SIZE, dragging_info)
     draw_game_over(SCREEN, board, SQUARE_SIZE)
     pygame.display.flip()
@@ -190,4 +207,3 @@ while running:
 
 pygame.quit()
 sys.exit()
-
