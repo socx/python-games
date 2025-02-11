@@ -1,6 +1,6 @@
 # --- SOCX CHECKERS ----------- #
 # --- By Musterion for Socx --- #
-# --- Version 2.1.1 ----------- #
+# --- Version 2.1.2 ----------- #
 # --- 08 Feb 2025 --------------#
 
 import pygame
@@ -430,8 +430,8 @@ def menu():
         option_font = pygame.font.SysFont("comicsans", 40)
         title_text = title_font.render("Checkers", True, WHITE)
         win.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 100))
-        option1 = option_font.render("Press 1 for Two Player Mode", True, WHITE)
-        option2 = option_font.render("Press 2 for Single Player Mode", True, WHITE)
+        option1 = option_font.render("Press 1 for Single Player Mode", True, WHITE)
+        option2 = option_font.render("Press 2 for Two Player Mode", True, WHITE)
         win.blit(option1, (WIDTH // 2 - option1.get_width() // 2, 300))
         win.blit(option2, (WIDTH // 2 - option2.get_width() // 2, 400))
         pygame.display.update()
@@ -442,10 +442,10 @@ def menu():
                 sys.exit()
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_1:
-                    mode = "2P"
+                    mode = "AI"
                     run = False
                 elif event.key == pygame.K_2:
-                    mode = "AI"
+                    mode = "2P"
                     run = False
     return mode
 
