@@ -1,6 +1,6 @@
 # --- SOCX CHESS -------------- #
 # --- By Musterion for Socx --- #
-# --- Version 1.2.0 ----------- #
+# --- Version 1.3.0 ----------- #
 # --- 11 Feb 2025 --------------#
 
 import sys
@@ -10,7 +10,7 @@ import chess
 # --- Initialization ---
 
 pygame.init()
-WIDTH, HEIGHT = 640, 640  # window dimensions (square board)
+WIDTH, HEIGHT = 700, 700  # window dimensions (square board)
 SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Socx Chess (WIP)")
 CLOCK = pygame.time.Clock()
@@ -22,31 +22,32 @@ SQUARE_SIZE = WIDTH // 8
 board = chess.Board()
 
 # Instead of a selected square, we now keep track of a piece being dragged.
-# dragging_info will be a dictionary containing:
-#   - "from_square": the square index from which the piece was picked up.
+# dragging_info is a dictionary containing:
+#   - "from_square": the square index where the piece was picked up.
 #   - "piece": the chess.Piece object being dragged.
 #   - "offset": the (x,y) offset from the top-left of the square where the mouse was clicked.
 #   - "current_pos": the current mouse position (updated during dragging).
 dragging_info = None
 
-# --- Unicode symbols for the pieces ---
-piece_unicode = {
-    "K": "\u2654",  # White King
-    "Q": "\u2655",  # White Queen
-    "R": "\u2656",  # White Rook
-    "B": "\u2657",  # White Bishop
-    "N": "\u2658",  # White Knight
-    "P": "\u2659",  # White Pawn
-    "k": "\u265A",  # Black King
-    "q": "\u265B",  # Black Queen
-    "r": "\u265C",  # Black Rook
-    "b": "\u265D",  # Black Bishop
-    "n": "\u265E",  # Black Knight
-    "p": "\u265F",  # Black Pawn
-}
+# --- Load piece images ---
+# Images are stored in the "images" folder.
+piece_images = {}
+piece_images["K"] = pygame.image.load("images/w_king.png")
+piece_images["Q"] = pygame.image.load("images/w_queen.png")
+piece_images["R"] = pygame.image.load("images/w_rook.png")
+piece_images["B"] = pygame.image.load("images/w_bishop.png")
+piece_images["N"] = pygame.image.load("images/w_knight.png")
+piece_images["P"] = pygame.image.load("images/w_pawn.png")
+piece_images["k"] = pygame.image.load("images/b_king.png")
+piece_images["q"] = pygame.image.load("images/b_queen.png")
+piece_images["r"] = pygame.image.load("images/b_rook.png")
+piece_images["b"] = pygame.image.load("images/b_bishop.png")
+piece_images["n"] = pygame.image.load("images/b_knight.png")
+piece_images["p"] = pygame.image.load("images/b_pawn.png")
 
-# Choose a font that supports Unicode chess symbols.
-FONT = pygame.font.SysFont("DejaVu Sans", SQUARE_SIZE)
+# Scale images to fit the square size.
+for key in piece_images:
+    piece_images[key] = pygame.transform.scale(piece_images[key], (SQUARE_SIZE, SQUARE_SIZE))
 
 # Colors for board squares and messages
 LIGHT_COLOR = (238, 238, 210)
@@ -97,7 +98,7 @@ def draw_move_hints(screen, board, square_size, dragging_info):
 
 def draw_pieces(screen, board, square_size, dragging_info):
     """
-    Draw all the pieces on the board using Unicode symbols.
+    Draw all the pieces on the board using images.
     The piece being dragged is not drawn on its original square.
     """
     for square in chess.SQUARES:
@@ -106,25 +107,19 @@ def draw_pieces(screen, board, square_size, dragging_info):
             continue
         piece = board.piece_at(square)
         if piece:
-            file = chess.square_file(square)
-            rank = chess.square_rank(square)
-            row = 7 - rank  # flip rank so that rank 8 is row 0
-            center_x = file * square_size + square_size // 2
-            center_y = row * square_size + square_size // 2
-            symbol = piece_unicode[piece.symbol()]
-            text_surface = FONT.render(symbol, True, (0, 0, 0))
-            text_rect = text_surface.get_rect(center=(center_x, center_y))
-            screen.blit(text_surface, text_rect)
+            rect = get_square_rect(square, square_size)
+            image = piece_images[piece.symbol()]
+            screen.blit(image, rect)
     
     # Draw the dragged piece (if any) at the current mouse position (accounting for the offset).
     if dragging_info is not None:
-        symbol = piece_unicode[dragging_info["piece"].symbol()]
-        text_surface = FONT.render(symbol, True, (0, 0, 0))
+        image = piece_images[dragging_info["piece"].symbol()]
         pos = dragging_info["current_pos"]
         offset = dragging_info["offset"]
         draw_x = pos[0] - offset[0]
         draw_y = pos[1] - offset[1]
-        screen.blit(text_surface, (draw_x, draw_y))
+        dragged_rect = pygame.Rect(draw_x, draw_y, SQUARE_SIZE, SQUARE_SIZE)
+        screen.blit(image, dragged_rect)
 
 def draw_game_over(screen, board, square_size):
     """
@@ -133,7 +128,9 @@ def draw_game_over(screen, board, square_size):
     if board.is_game_over():
         outcome = board.outcome()
         result_text = f"Game Over: {outcome.result()}" if outcome is not None else "Game Over"
-        text_surface = FONT.render(result_text, True, GAME_OVER_COLOR)
+        # Use a font to render the message.
+        font = pygame.font.SysFont("DejaVu Sans", 32)
+        text_surface = font.render(result_text, True, GAME_OVER_COLOR)
         text_rect = text_surface.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         screen.blit(text_surface, text_rect)
 
